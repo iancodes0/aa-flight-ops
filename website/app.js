@@ -1,9 +1,30 @@
-document.querySelectorAll('.navigation .nav-link').forEach(link => {
-  link.addEventListener('click', () => {
-    document.querySelectorAll('.navigation .nav-link').forEach(item => item.classList.remove('active'));
-    link.classList.add('active');
+const pageNames = { home: 'Overview', flights: 'Flight logs', commands: 'Bot commands', moderation: 'AutoMod', settings: 'Settings', request: 'Request a flight plan' };
+const pageTitle = document.querySelector('#page-title');
+
+function updateNavigation() {
+  const page = window.location.hash.slice(1) || 'home';
+  document.querySelectorAll('.navigation .nav-link').forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === `#${page}` || (page === 'request' && link.getAttribute('href') === '#home'));
   });
-});
+  if (pageTitle) pageTitle.textContent = pageNames[page] || pageNames.home;
+}
+
+window.addEventListener('hashchange', updateNavigation);
+updateNavigation();
+
+const savedTheme = localStorage.getItem('aa-flight-ops-theme') || 'red-white-blue';
+const themeButtons = document.querySelectorAll('[data-theme-choice]');
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  localStorage.setItem('aa-flight-ops-theme', theme);
+  themeButtons.forEach(button => {
+    const selected = button.dataset.themeChoice === theme;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-checked', String(selected));
+  });
+}
+themeButtons.forEach(button => button.addEventListener('click', () => applyTheme(button.dataset.themeChoice)));
+applyTheme(savedTheme);
 
 const flightPlanForm = document.querySelector('#flight-plan-form');
 const statusMessage = document.querySelector('.form-status');
