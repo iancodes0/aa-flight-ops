@@ -1,0 +1,20 @@
+{
+  "name": "aa-flight-ops-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord flight logging bot with a GitHub Pages dashboard",
+  "main": "bot/index.js",
+  "scripts": {
+    "start": "node bot/index.js",
+    "dev": "node --watch bot/index.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs aa-flight-ops-bot",
+    "pm2:restart": "pm2 restart aa-flight-ops-bot"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
+    "pm2": "^7.1.1"
+  }
+}
