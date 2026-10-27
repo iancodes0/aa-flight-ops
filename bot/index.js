@@ -33,7 +33,10 @@ const commands = [
     .addStringOption(option => option.setName('notes').setDescription('Optional flight notes').setRequired(false).setMaxLength(1000)),
   new SlashCommandBuilder()
     .setName('faq')
-    .setDescription('Create your private FAQ support channel (under development).')
+    .setDescription('Create your private FAQ support channel (under development).'),
+  new SlashCommandBuilder()
+    .setName('joinstaralliance')
+    .setDescription('Get the Star Alliance Discord invite link.')
 ].map(command => command.toJSON());
 
 const client = new Client({
@@ -197,6 +200,11 @@ client.on('interactionCreate', async interaction => {
       content: 'The FAQ feature is under development and is not available yet.',
       ephemeral: true
     });
+    return;
+  }
+
+  if (interaction.commandName === 'joinstaralliance') {
+    await interaction.reply('https://discord.gg/Q8vppcNXAG');
   }
 });
 
