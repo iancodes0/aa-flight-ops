@@ -1,8 +1,9 @@
-const pageNames = { home: 'Overview', flights: 'Flight logs', commands: 'Bot commands', moderation: 'AutoMod', settings: 'Settings', request: 'Request a flight plan' };
+const pageNames = { welcome: 'Welcome', home: 'Overview', flights: 'Flight logs', commands: 'Bot commands', moderation: 'AutoMod', settings: 'Settings', request: 'Request a flight plan' };
 const pageTitle = document.querySelector('#page-title');
 
 function updateNavigation() {
-  const page = window.location.hash.slice(1) || 'home';
+  const page = window.location.hash.slice(1) || 'welcome';
+  document.querySelector('.main-content').classList.toggle('show-welcome', page === 'welcome');
   document.querySelectorAll('.navigation .nav-link').forEach(link => {
     link.classList.toggle('active', link.getAttribute('href') === `#${page}` || (page === 'request' && link.getAttribute('href') === '#home'));
   });
