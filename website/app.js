@@ -7,6 +7,7 @@ function updateNavigation() {
   const page = validPages.has(requestedPage) ? requestedPage : 'welcome';
   if (requestedPage !== page) history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${page}`);
   document.querySelector('.main-content').classList.toggle('show-welcome', page === 'welcome');
+  document.querySelector('.main-content').classList.toggle('page-settings', page === 'settings');
   document.querySelectorAll('.navigation .nav-link').forEach(link => {
     link.classList.toggle('active', link.getAttribute('href') === `#${page}` || (page === 'request' && link.getAttribute('href') === '#home'));
   });
