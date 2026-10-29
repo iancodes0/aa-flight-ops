@@ -13,7 +13,7 @@ const {
 } = require('discord.js');
 
 const token = process.env.DISCORD_TOKEN;
-const flightPlanChannelId = '1564726414731903106';
+const flightPlanChannelId = '1554192355387646034';
 const websiteApiPort = Number(process.env.WEBSITE_API_PORT || 3001);
 if (!token) {
   console.error('Missing DISCORD_TOKEN. Copy .env.example to .env and add your bot token.');
