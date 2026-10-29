@@ -1,6 +1,6 @@
 # AA Flight Ops Discord bot
 
-Discord bot for community flight logs, private FAQ channels, and basic anti-spam/profanity moderation. The separate `website/` folder is a static GitHub Pages dashboard preview; its figures are sample data, not connected to Discord.
+Discord bot and pilot dashboard for community flight logs, OAuth sign-in, flight-plan review, and basic anti-spam/profanity moderation.
 
 ## Requirements
 
@@ -12,7 +12,7 @@ Discord bot for community flight logs, private FAQ channels, and basic anti-spam
 ## Configure the bot
 
 1. Run `npm install` in this project.
-2. Copy `.env.example` to `.env` and put your bot token after `DISCORD_TOKEN=`. **The bot token is the only value needed in `.env`. Never commit or share `.env`.**
+2. Copy `.env.example` to `.env` and set `DISCORD_TOKEN`, `DISCORD_CLIENT_SECRET`, and the other server values. **Never put the client secret or bot token in the website. Never commit or share `.env`.**
 3. In the Discord Developer Portal, enable the **Message Content Intent** for AutoMod. Invite the bot with `applications.commands` and `bot` scopes and grant it View Channels, Send Messages, Embed Links, Attach Files, Manage Messages, and Manage Channels permissions.
 4. Start once with `npm start` to check that login and command registration succeed. Slash commands can take a short time to appear globally.
 
@@ -32,8 +32,17 @@ npx pm2 startup
 
 Run the command printed by `pm2 startup` on that host to enable boot-time startup, then run `npx pm2 save` again. Useful operations: `npm run pm2:status`, `npm run pm2:logs`, and `npm run pm2:restart`. PM2 requires a machine that remains powered on; it is not a cloud host by itself.
 
-## Website repository and GitHub Pages
+## Live pilot dashboard
 
-`website/` is the standalone static dashboard. To create the separate website repository, create a new empty repository on GitHub, initialize/push the contents of `website/` as that repository's root, then set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. Its workflow will publish on pushes to `main`. The dashboard currently contains illustrative data only; a live Discord-connected dashboard needs a secure server/API and authentication, which static Pages alone cannot provide.
+The website supports Discord OAuth sign-in, personal flight-plan status, moderator accept/deny actions, completed-flight history, hours, and nautical-mile totals. Requests are stored in `bot/data/flight-data.json`; back up that file in production.
+
+GitHub Pages is only the frontend. The Node bot/API must be hosted at a public HTTPS URL. Set `window.AA_API_BASE` before `app.js` in `website/index.html` to that URL, for example:
+
+```html
+<script>window.AA_API_BASE = 'https://api.example.com';</script>
+<script src="app.js"></script>
+```
+
+The API host must set `WEBSITE_API_ORIGIN=https://iancodes0.github.io`, and the Discord application OAuth redirect URI must exactly match `DISCORD_REDIRECT_URI=https://iancodes0.github.io/aa-flight-ops/`. GitHub Pages cannot call `127.0.0.1`, so the local default is intended only for testing on the same machine as the bot.
 
 The UI is American Airlines-inspired but uses its own abstract wing graphic and is not affiliated with or endorsed by American Airlines.

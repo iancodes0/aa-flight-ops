@@ -1,5 +1,8 @@
 require('dotenv').config();
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 const {
   Client,
@@ -9,15 +12,88 @@ const {
   Routes,
   SlashCommandBuilder,
   EmbedBuilder,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 
 const token = process.env.DISCORD_TOKEN;
+const discordClientId = process.env.DISCORD_CLIENT_ID || '1561441849129041991';
+const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
+const oauthRedirectUri = process.env.DISCORD_REDIRECT_URI || 'https://iancodes0.github.io/aa-flight-ops/';
 const flightPlanChannelId = '1554192355387646034';
 const websiteApiPort = Number(process.env.WEBSITE_API_PORT || 3001);
+const websiteApiOrigin = process.env.WEBSITE_API_ORIGIN || '*';
+const dataDirectory = path.join(__dirname, 'data');
+const dataFile = path.join(dataDirectory, 'flight-data.json');
+const sessions = new Map();
+const flightData = loadFlightData();
 if (!token) {
   console.error('Missing DISCORD_TOKEN. Copy .env.example to .env and add your bot token.');
   process.exit(1);
+}
+
+function loadFlightData() {
+  try {
+    return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+  } catch {
+    return { plans: [], flights: [] };
+  }
+}
+
+function saveFlightData() {
+  fs.mkdirSync(dataDirectory, { recursive: true });
+  fs.writeFileSync(dataFile, JSON.stringify(flightData, null, 2));
+}
+
+function createSession(user) {
+  const session = crypto.randomBytes(32).toString('hex');
+  sessions.set(session, { user, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  return session;
+}
+
+function getSession(request) {
+  const authorization = request.headers.authorization || '';
+  const sessionToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const session = sessions.get(sessionToken);
+  if (!session || session.expiresAt < Date.now()) {
+    sessions.delete(sessionToken);
+    return null;
+  }
+  return session;
+}
+
+function jsonResponse(response, status, body) {
+  response.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': websiteApiOrigin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+  response.end(JSON.stringify(body));
+}
+
+function readJson(request) {
+  return new Promise((resolve, reject) => {
+    let rawBody = '';
+    request.on('data', chunk => {
+      rawBody += chunk;
+      if (rawBody.length > 20000) reject(new Error('Request is too large.'));
+    });
+    request.on('end', () => {
+      try { resolve(JSON.parse(rawBody || '{}')); } catch { reject(new Error('Invalid JSON.')); }
+    });
+    request.on('error', reject);
+  });
+}
+
+function publicUser(user) {
+  return { id: user.id, username: user.username, globalName: user.global_name || user.username, avatar: user.avatar };
+}
+
+function userDashboard(userId) {
+  const plans = flightData.plans.filter(plan => plan.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const flights = flightData.flights.filter(flight => flight.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { plans, flights, stats: { flights: flights.length, hours: flights.reduce((sum, flight) => sum + flight.durationMinutes, 0) / 60, miles: flights.reduce((sum, flight) => sum + (flight.distance || 0), 0) } };
 }
 
 const commands = [
@@ -74,64 +150,65 @@ function formatDuration(minutes) {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 }
 
-function sendFlightPlanResponse(response, status, body) {
-  response.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' });
-  response.end(JSON.stringify(body));
-}
-
 const flightPlanServer = http.createServer((request, response) => {
   if (request.method === 'OPTIONS') {
-    response.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' });
+    response.writeHead(204, { 'Access-Control-Allow-Origin': websiteApiOrigin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
     response.end();
     return;
   }
-  if (request.method !== 'POST' || request.url !== '/api/flight-plan') {
-    sendFlightPlanResponse(response, 404, { error: 'Not found' });
+  if (request.url === '/api/auth/exchange' && request.method === 'POST') {
+    readJson(request).then(async body => {
+      if (!discordClientSecret) throw new Error('Discord OAuth is not configured on the server.');
+      if (!body.code || body.redirectUri !== oauthRedirectUri) throw new Error('Invalid OAuth request.');
+      const tokenResponse = await fetch('https://discord.com/api/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: discordClientId, client_secret: discordClientSecret, grant_type: 'authorization_code', code: body.code, redirect_uri: oauthRedirectUri }) });
+      if (!tokenResponse.ok) throw new Error('Discord authorization code was rejected.');
+      const oauthTokens = await tokenResponse.json();
+      const userResponse = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${oauthTokens.access_token}` } });
+      if (!userResponse.ok) throw new Error('Could not load your Discord profile.');
+      const user = await userResponse.json();
+      jsonResponse(response, 200, { token: createSession(user), user: publicUser(user) });
+    }).catch(error => jsonResponse(response, 400, { error: error.message }));
     return;
   }
-
-  let rawBody = '';
-  request.on('data', chunk => {
-    rawBody += chunk;
-    if (rawBody.length > 10000) request.destroy();
-  });
-  request.on('end', async () => {
-    try {
-      const body = JSON.parse(rawBody);
+  if (request.url === '/api/me' && request.method === 'GET') {
+    const session = getSession(request);
+    if (!session) return jsonResponse(response, 401, { error: 'Sign in with Discord to continue.' });
+    jsonResponse(response, 200, { user: publicUser(session.user), ...userDashboard(session.user.id) });
+    return;
+  }
+  if (request.url === '/api/flight-plan' && request.method === 'POST') {
+    const session = getSession(request);
+    if (!session) return jsonResponse(response, 401, { error: 'Sign in with Discord to request a flight plan.' });
+    readJson(request).then(async body => {
       const callsign = String(body.callsign || '').trim().toUpperCase();
       const aircraft = String(body.aircraft || '').trim();
       const departure = String(body.departure || '').trim().toUpperCase();
       const arrival = String(body.arrival || '').trim().toUpperCase();
-      const pilot = String(body.pilot || '').trim();
-      if (!callsign || !aircraft || !pilot || !/^[A-Z]{4}$/.test(departure) || !/^[A-Z]{4}$/.test(arrival) || departure === arrival) {
-        sendFlightPlanResponse(response, 400, { error: 'Enter a callsign, pilot name, aircraft, and two different four-letter ICAO airports.' });
-        return;
-      }
+      if (!callsign || !aircraft || !/^[A-Z]{4}$/.test(departure) || !/^[A-Z]{4}$/.test(arrival) || departure === arrival) throw new Error('Enter a callsign, aircraft, and two different four-letter ICAO airports.');
       const estimate = estimateFlight(departure, arrival, aircraft);
+      const plan = { id: crypto.randomUUID(), userId: session.user.id, pilot: session.user.global_name || session.user.username, callsign, aircraft, departure, arrival, estimatedMinutes: estimate.minutes, distance: estimate.distance, status: 'pending', reason: '', createdAt: new Date().toISOString() };
       const channel = await client.channels.fetch(flightPlanChannelId);
       if (!channel?.isTextBased()) throw new Error('Configured flight-plan channel is unavailable.');
-      const embed = new EmbedBuilder()
-        .setColor(0xC8170A)
-        .setTitle('New flight plan request')
-        .setDescription(`**${departure}**  →  **${arrival}**`)
-        .addFields(
-          { name: 'Callsign', value: callsign, inline: true },
-          { name: 'Pilot', value: pilot, inline: true },
-          { name: 'Aircraft', value: aircraft, inline: true },
-          { name: 'Departure ICAO', value: departure, inline: true },
-          { name: 'Arrival ICAO', value: arrival, inline: true },
-          { name: 'Estimated flight time', value: formatDuration(estimate.minutes), inline: true },
-          { name: 'Route distance', value: estimate.distance ? `${estimate.distance.toLocaleString()} NM` : 'Airport distance unavailable; standard estimate used', inline: false }
-        )
-        .setFooter({ text: 'Submitted from AA Flight Ops website' })
-        .setTimestamp();
-      await channel.send({ embeds: [embed] });
-      sendFlightPlanResponse(response, 201, { message: 'Flight plan sent to Discord.', estimatedTime: formatDuration(estimate.minutes) });
-    } catch (error) {
-      console.error('Could not send website flight plan:', error.message);
-      sendFlightPlanResponse(response, 500, { error: 'The bot could not send the flight plan. Check its Discord channel permissions.' });
-    }
-  });
+      const embed = new EmbedBuilder().setColor(0xC8170A).setTitle('New flight plan request').setDescription(`**${departure}**  →  **${arrival}**`).addFields(
+        { name: 'Callsign', value: callsign, inline: true }, { name: 'Pilot', value: `${plan.pilot} (<@${plan.userId}>)`, inline: true }, { name: 'Aircraft', value: aircraft, inline: true },
+        { name: 'Estimated flight time', value: formatDuration(estimate.minutes), inline: true }, { name: 'Route distance', value: estimate.distance ? `${estimate.distance.toLocaleString()} NM` : 'Standard estimate used', inline: true }, { name: 'Request ID', value: plan.id, inline: false }
+      ).setFooter({ text: 'Submitted from AA Flight Ops website | Pending moderator review' }).setTimestamp();
+      const controls = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`plan_accept:${plan.id}`).setLabel('Accept').setStyle(ButtonStyle.Success), new ButtonBuilder().setCustomId(`plan_deny:${plan.id}`).setLabel('Deny with reason').setStyle(ButtonStyle.Danger));
+      const message = await channel.send({ embeds: [embed], components: [controls] });
+      plan.discordMessageId = message.id;
+      flightData.plans.push(plan);
+      saveFlightData();
+      jsonResponse(response, 201, { message: 'Flight plan sent for moderator review.', estimatedTime: formatDuration(estimate.minutes), plan });
+    }).catch(error => { console.error('Could not send website flight plan:', error.message); jsonResponse(response, 400, { error: error.message }); });
+    return;
+  }
+  if (request.url === '/api/flight-plans' && request.method === 'GET') {
+    const session = getSession(request);
+    if (!session) return jsonResponse(response, 401, { error: 'Sign in with Discord to continue.' });
+    jsonResponse(response, 200, userDashboard(session.user.id));
+    return;
+  }
+  jsonResponse(response, 404, { error: 'Not found' });
 });
 
 flightPlanServer.listen(websiteApiPort, '127.0.0.1', () => console.log(`Website flight-plan API listening on port ${websiteApiPort}.`));
@@ -155,6 +232,51 @@ client.once('ready', async readyClient => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (interaction.isButton() && interaction.customId.startsWith('plan_')) {
+    if (!interaction.inGuild() || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+      await interaction.reply({ content: 'Only moderators with Manage Messages can review flight plans.', ephemeral: true });
+      return;
+    }
+    const [action, planId] = interaction.customId.split(':');
+    const plan = flightData.plans.find(item => item.id === planId);
+    if (!plan || plan.status !== 'pending') {
+      await interaction.reply({ content: 'This flight plan has already been reviewed or no longer exists.', ephemeral: true });
+      return;
+    }
+    if (action === 'plan_deny') {
+      const modal = new ModalBuilder().setCustomId(`plan_deny_reason:${plan.id}`).setTitle('Deny flight plan');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('reason').setLabel('Reason').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(500).setPlaceholder('Explain what the pilot should correct.')));
+      await interaction.showModal(modal);
+      return;
+    }
+    plan.status = 'accepted';
+    plan.reviewedAt = new Date().toISOString();
+    plan.reviewedBy = interaction.user.id;
+    saveFlightData();
+    await interaction.update({ content: `Accepted by ${interaction.user}.`, components: [], embeds: [EmbedBuilder.from(interaction.message.embeds[0]).setColor(0x20A36B).setFooter({ text: 'Accepted by a moderator' })] });
+    return;
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('plan_deny_reason:')) {
+    if (!interaction.inGuild() || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+      await interaction.reply({ content: 'Only moderators with Manage Messages can review flight plans.', ephemeral: true });
+      return;
+    }
+    const planId = interaction.customId.split(':')[1];
+    const plan = flightData.plans.find(item => item.id === planId);
+    if (!plan || plan.status !== 'pending') {
+      await interaction.reply({ content: 'This flight plan has already been reviewed or no longer exists.', ephemeral: true });
+      return;
+    }
+    plan.status = 'denied';
+    plan.reason = interaction.fields.getTextInputValue('reason').trim();
+    plan.reviewedAt = new Date().toISOString();
+    plan.reviewedBy = interaction.user.id;
+    saveFlightData();
+    await interaction.update({ content: `Denied by ${interaction.user}: ${plan.reason}`, components: [], embeds: [EmbedBuilder.from(interaction.message.embeds[0]).setColor(0x777F8F).addFields({ name: 'Denial reason', value: plan.reason }).setFooter({ text: 'Denied by a moderator' })] });
+    return;
+  }
+
   if (!interaction.isChatInputCommand() || !interaction.inGuild()) return;
 
   if (interaction.commandName === 'logflight') {
@@ -192,6 +314,9 @@ client.on('interactionCreate', async interaction => {
     if (notes) embed.addFields({ name: 'Notes', value: notes });
     embed.setImage(image.url);
     await interaction.reply({ embeds: [embed] });
+    const estimate = estimateFlight(departure, arrival, aircraft);
+    flightData.flights.push({ id: crypto.randomUUID(), userId: interaction.user.id, pilot: interaction.user.globalName || interaction.user.username, departure, arrival, aircraft, durationMinutes: hours * 60 + minutes, distance: estimate.distance, createdAt: new Date().toISOString(), source: 'discord' });
+    saveFlightData();
     return;
   }
 

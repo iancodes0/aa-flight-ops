@@ -1,6 +1,6 @@
 # AA Flight Ops dashboard
 
-Static American Airlines-inspired community dashboard for GitHub Pages. The flight data and status shown here are illustrative preview content; GitHub Pages cannot securely read live Discord data without a separate authenticated backend.
+Pilot dashboard frontend for GitHub Pages. It uses Discord OAuth and a separate public Node API for authenticated flight-plan requests, moderation status, and pilot statistics.
 
 ## Publish with GitHub Pages
 
@@ -13,3 +13,7 @@ The included Actions workflow deploys the website directory automatically when i
 ## Branding
 
 The interface uses a red, blue, silver, and white aviation palette and a custom abstract wing mark. It is an independent community project and is not affiliated with or endorsed by American Airlines. Any official logo use should follow the airline's trademark and brand guidelines.
+
+## API connection
+
+Set `window.AA_API_BASE` in `index.html` before `app.js` to the public HTTPS URL of the bot API. The API must allow the GitHub Pages origin and use the exact Discord OAuth redirect URL configured in the Discord Developer Portal.

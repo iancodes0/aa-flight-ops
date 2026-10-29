@@ -2,5 +2,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+bot/data/
 .DS_Store
 npm-debug.log*
