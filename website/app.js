@@ -145,9 +145,7 @@ arrivalInput?.addEventListener('input', updateRoutePreview);
 flightPlanForm?.addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentUser || !localStorage.getItem('aa-flight-ops-session')) {
-    statusMessage.className = 'form-status error';
-    statusMessage.textContent = 'Sign in with Discord before requesting a flight plan.';
-    window.location.hash = 'welcome';
+    window.location.href = '/api/auth/login';
     return;
   }
   statusMessage.className = 'form-status';
