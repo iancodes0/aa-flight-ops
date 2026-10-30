@@ -30,6 +30,7 @@ const websiteApiPort = Number(process.env.WEBSITE_API_PORT || 3001);
 const websiteApiOrigin = process.env.WEBSITE_API_ORIGIN || '*';
 const dataDirectory = path.join(__dirname, 'data');
 const dataFile = path.join(dataDirectory, 'flight-data.json');
+const websiteDirectory = path.join(__dirname, '..', 'website');
 const sessions = new Map();
 const flightData = loadFlightData();
 if (!token) {
@@ -96,6 +97,27 @@ function userDashboard(userId) {
   return { plans, flights, stats: { flights: flights.length, hours: flights.reduce((sum, flight) => sum + flight.durationMinutes, 0) / 60, miles: flights.reduce((sum, flight) => sum + (flight.distance || 0), 0) } };
 }
 
+function serveWebsite(request, response) {
+  const requestedPath = new URL(request.url, `http://${request.headers.host || 'localhost'}`).pathname;
+  const relativePath = requestedPath === '/' ? 'index.html' : requestedPath.replace(/^\/+/, '');
+  const filePath = path.resolve(websiteDirectory, relativePath);
+  if (!filePath.startsWith(`${websiteDirectory}${path.sep}`)) {
+    response.writeHead(403);
+    response.end('Forbidden');
+    return;
+  }
+  fs.readFile(filePath, (error, content) => {
+    if (error) {
+      response.writeHead(error.code === 'ENOENT' ? 404 : 500, { 'Content-Type': 'text/plain' });
+      response.end(error.code === 'ENOENT' ? 'Not found' : 'Unable to load website.');
+      return;
+    }
+    const contentTypes = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
+    response.writeHead(200, { 'Content-Type': contentTypes[path.extname(filePath)] || 'application/octet-stream' });
+    response.end(content);
+  });
+}
+
 const commands = [
   new SlashCommandBuilder()
     .setName('logflight')
@@ -154,6 +176,10 @@ const flightPlanServer = http.createServer((request, response) => {
   if (request.method === 'OPTIONS') {
     response.writeHead(204, { 'Access-Control-Allow-Origin': websiteApiOrigin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
     response.end();
+    return;
+  }
+  if (request.method === 'GET' && !request.url.startsWith('/api/')) {
+    serveWebsite(request, response);
     return;
   }
   if (request.url === '/api/auth/exchange' && request.method === 'POST') {

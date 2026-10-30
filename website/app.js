@@ -17,6 +17,11 @@ async function apiFetch(path, options = {}) {
 function updateNavigation() {
   const requestedPage = window.location.hash.slice(1);
   const page = validPages.has(requestedPage) ? requestedPage : 'welcome';
+  const isSignedIn = Boolean(localStorage.getItem('aa-flight-ops-session'));
+  if (page === 'request' && !isSignedIn) {
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}#welcome`);
+    return updateNavigation();
+  }
   if (requestedPage !== page) history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${page}`);
   document.querySelector('.main-content').classList.toggle('show-welcome', page === 'welcome');
   document.querySelectorAll('.navigation .nav-link').forEach(link => {
@@ -70,6 +75,7 @@ function renderPlans(plans) {
 
 function renderDashboard(data) {
   currentUser = data.user;
+  document.body.classList.add('signed-in');
   document.querySelector('#account-state').innerHTML = '<i></i> Connected';
   document.querySelector('#account-name').textContent = data.user.globalName || data.user.username;
   document.querySelector('#stat-flights').textContent = data.stats.flights;
@@ -78,6 +84,10 @@ function renderDashboard(data) {
   renderPlans(data.plans);
   const login = document.querySelector('#discord-login');
   if (login) { login.textContent = 'Discord connected'; login.href = '#home'; }
+  const description = document.querySelector('#request-description');
+  if (description) description.textContent = 'Send your route to the operations channel and get a route-based time estimate. Moderators will review your request.';
+  const submitButton = document.querySelector('#flight-plan-submit');
+  if (submitButton) { submitButton.disabled = false; submitButton.innerHTML = 'Send flight plan <span>→</span>'; }
 }
 
 async function loadDashboard() {
@@ -87,6 +97,7 @@ async function loadDashboard() {
   } catch (error) {
     const status = document.querySelector('#account-state');
     if (status) status.innerHTML = '<i></i> Sign in required';
+    document.body.classList.remove('signed-in');
     if (error.message !== 'Sign in with Discord to continue.') console.warn(error.message);
   }
 }
@@ -131,6 +142,12 @@ arrivalInput?.addEventListener('input', updateRoutePreview);
 
 flightPlanForm?.addEventListener('submit', async event => {
   event.preventDefault();
+  if (!currentUser || !localStorage.getItem('aa-flight-ops-session')) {
+    statusMessage.className = 'form-status error';
+    statusMessage.textContent = 'Sign in with Discord before requesting a flight plan.';
+    window.location.hash = 'welcome';
+    return;
+  }
   statusMessage.className = 'form-status';
   statusMessage.textContent = 'Sending to operations...';
   const formData = new FormData(flightPlanForm);

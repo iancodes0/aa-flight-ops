@@ -36,7 +36,9 @@ Run the command printed by `pm2 startup` on that host to enable boot-time startu
 
 The website supports Discord OAuth sign-in, personal flight-plan status, moderator accept/deny actions, completed-flight history, hours, and nautical-mile totals. Requests are stored in `bot/data/flight-data.json`; back up that file in production.
 
-GitHub Pages is only the frontend. The Node bot/API must be hosted at a public HTTPS URL. Set `window.AA_API_BASE` before `app.js` in `website/index.html` to that URL, for example:
+There is no separate API project. The existing Node bot process includes the small backend needed for Discord login and flight-plan storage. GitHub Pages is only the frontend, so that same bot process must be reachable at a public HTTPS URL for the published site to use it. Set `window.AA_API_BASE` before `app.js` in `website/index.html` to that URL, for example:
+
+When running locally, open `http://localhost:3001/`. The bot serves the dashboard and its backend from the same process.
 
 ```html
 <script>window.AA_API_BASE = 'https://api.example.com';</script>
