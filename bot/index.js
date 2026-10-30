@@ -118,6 +118,13 @@ function serveWebsite(request, response) {
   });
 }
 
+function sendDiscordLogin(response) {
+  const authorizeUrl = new URL('https://discord.com/oauth2/authorize');
+  authorizeUrl.search = new URLSearchParams({ client_id: discordClientId, response_type: 'code', redirect_uri: oauthRedirectUri, scope: 'identify' });
+  response.writeHead(302, { Location: authorizeUrl.toString() });
+  response.end();
+}
+
 const commands = [
   new SlashCommandBuilder()
     .setName('logflight')
@@ -176,6 +183,10 @@ const flightPlanServer = http.createServer((request, response) => {
   if (request.method === 'OPTIONS') {
     response.writeHead(204, { 'Access-Control-Allow-Origin': websiteApiOrigin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
     response.end();
+    return;
+  }
+  if (request.method === 'GET' && request.url.startsWith('/api/auth/login')) {
+    sendDiscordLogin(response);
     return;
   }
   if (request.method === 'GET' && !request.url.startsWith('/api/')) {

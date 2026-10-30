@@ -3,6 +3,8 @@ const pageTitle = document.querySelector('#page-title');
 const validPages = new Set(Object.keys(pageNames));
 const API_BASE = window.AA_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : '');
 let currentUser = null;
+const discordLogin = document.querySelector('#discord-login');
+if (discordLogin && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) discordLogin.href = '/api/auth/login';
 
 async function apiFetch(path, options = {}) {
   const headers = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) };
