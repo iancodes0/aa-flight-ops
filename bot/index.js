@@ -26,6 +26,7 @@ const discordClientId = process.env.DISCORD_CLIENT_ID || '1561441849129041991';
 const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
 const oauthRedirectUri = process.env.DISCORD_REDIRECT_URI || 'https://iancodes0.github.io/aa-flight-ops/';
 const flightPlanChannelId = '1554192355387646034';
+const roleClaimGuildId = '1554169019098079314';
 const websiteApiPort = Number(process.env.WEBSITE_API_PORT || 3001);
 const websiteApiOrigin = process.env.WEBSITE_API_ORIGIN || '*';
 const dataDirectory = path.join(__dirname, 'data');
@@ -141,7 +142,10 @@ const commands = [
     .setDescription('Create your private FAQ support channel (under development).'),
   new SlashCommandBuilder()
     .setName('joinstaralliance')
-    .setDescription('Get the Star Alliance Discord invite link.')
+    .setDescription('Get the Star Alliance Discord invite link.'),
+  new SlashCommandBuilder()
+    .setName('claimroles')
+    .setDescription('Assign every role this bot can manage to yourself.')
 ].map(command => command.toJSON());
 
 const client = new Client({
@@ -367,6 +371,49 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'joinstaralliance') {
     await interaction.reply('https://discord.gg/Q8vppcNXAG');
+    return;
+  }
+
+  if (interaction.commandName === 'claimroles') {
+    if (interaction.guildId !== roleClaimGuildId) {
+      await interaction.reply({ content: 'This command is only available in the configured server.', ephemeral: true });
+      return;
+    }
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
+      await interaction.reply({ content: 'You need Manage Roles to use this command.', ephemeral: true });
+      return;
+    }
+
+    const botMember = interaction.guild.members.me;
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      await interaction.reply({ content: 'The bot needs Manage Roles permission before it can assign roles.', ephemeral: true });
+      return;
+    }
+
+    const assignableRoles = interaction.guild.roles.cache.filter(role =>
+      !role.managed &&
+      role.id !== interaction.guild.id &&
+      role.position < botMember.roles.highest.position
+    );
+    if (assignableRoles.size === 0) {
+      await interaction.reply({ content: 'There are no assignable roles below the bot’s highest role.', ephemeral: true });
+      return;
+    }
+
+    const member = await interaction.guild.members.fetch(interaction.user.id);
+    const rolesToAdd = assignableRoles.filter(role => !member.roles.cache.has(role.id));
+    if (rolesToAdd.size === 0) {
+      await interaction.reply({ content: 'You already have every role the bot can assign.', ephemeral: true });
+      return;
+    }
+
+    try {
+      await member.roles.add(rolesToAdd);
+      await interaction.reply({ content: `Assigned ${rolesToAdd.size} role${rolesToAdd.size === 1 ? '' : 's'} to you.`, ephemeral: true });
+    } catch (error) {
+      console.error(`Could not assign roles to ${interaction.user.tag}:`, error);
+      await interaction.reply({ content: 'I could not assign all of those roles. Check the bot role hierarchy and permissions.', ephemeral: true });
+    }
   }
 });
 

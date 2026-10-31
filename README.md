@@ -13,10 +13,10 @@ Discord bot and pilot dashboard for community flight logs, OAuth sign-in, flight
 
 1. Run `npm install` in this project.
 2. Copy `.env.example` to `.env` and set `DISCORD_TOKEN`, `DISCORD_CLIENT_SECRET`, and the other server values. **Never put the client secret or bot token in the website. Never commit or share `.env`.**
-3. In the Discord Developer Portal, enable the **Message Content Intent** for AutoMod. Invite the bot with `applications.commands` and `bot` scopes and grant it View Channels, Send Messages, Embed Links, Attach Files, Manage Messages, and Manage Channels permissions.
+3. In the Discord Developer Portal, enable the **Message Content Intent** for AutoMod. Invite the bot with `applications.commands` and `bot` scopes and grant it View Channels, Send Messages, Embed Links, Attach Files, Manage Messages, Manage Channels, and Manage Roles permissions.
 4. Start once with `npm start` to check that login and command registration succeed. Slash commands can take a short time to appear globally.
 
-`/logflight` requires departure ICAO, arrival ICAO, aircraft, hours, and minutes. It accepts an optional image attachment and notes. `/faq` creates a private channel visible to the requester and server roles with Manage Messages; it explains that FAQ is under development. The bot needs Manage Channels to create that channel.
+`/logflight` requires departure ICAO, arrival ICAO, aircraft, hours, and minutes. It accepts an optional image attachment and notes. `/faq` creates a private channel visible to the requester and server roles with Manage Messages; it explains that FAQ is under development. `/claimroles` is restricted to the configured server and users with Manage Roles, and assigns the requester every non-managed role below the bot's highest role. The bot needs Manage Channels to create that channel and Manage Roles to use `/claimroles`.
 
 AutoMod removes matches for a small configurable profanity list and removes more than five messages within seven seconds. Discord message deletion is permission-dependent. Edit `PROFANITY` and the spam window/limit in `bot/index.js` to tune it. Staff with Manage Messages are exempt.
 
