@@ -1,0 +1,67 @@
+html,
+body,
+#cesiumContainer {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #071c38;
+}
+
+.globe-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.globe-header {
+  position: absolute;
+  z-index: 1;
+  top: 1rem;
+  left: 1rem;
+  max-width: 22rem;
+  padding: 1rem 1.25rem;
+  color: #fff;
+  background: #071c38dd;
+  border: 1px solid #ffffff2b;
+  border-radius: 0.75rem;
+}
+
+.globe-header a {
+  color: #f5b5c0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.globe-header h1 {
+  margin: 0.4rem 0;
+  font-size: 1.35rem;
+}
+
+.globe-header p {
+  margin: 0;
+  color: #c9d6e5;
+  font-size: 0.85rem;
+}
+
+.globe-status {
+  position: absolute;
+  z-index: 1;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: 24rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background: #7d1829e6;
+  border-radius: 0.5rem;
+}
+
+.globe-status:empty {
+  display: none;
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive 3D CesiumJS globe for AA Flight Ops.">
+  <title>AA Flight Ops | 3D Globe</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="globe.css">
+</head>
+<body>
+  <main class="globe-shell">
+    <header class="globe-header">
+      <a href="index.html">AA Flight Ops</a>
+      <h1>3D Flight Globe</h1>
+      <p>Drag to rotate, scroll to zoom, and right-drag to tilt.</p>
+    </header>
+    <div id="cesiumContainer" aria-label="Interactive 3D globe"></div>
+    <p id="globe-status" class="globe-status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script>
+    window.CESIUM_BASE_URL =
+      'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium';
+  </script>
+  <script src="globe-config.js"></script>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
+  <script src="aircraft-physics.js"></script>
+  <script src="globe.js"></script>
+</body>
+</html>

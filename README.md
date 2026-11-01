@@ -48,3 +48,65 @@ When running locally, open `http://localhost:3001/`. The bot serves the dashboar
 The API host must set `WEBSITE_API_ORIGIN=https://iancodes0.github.io`, and the Discord application OAuth redirect URI must exactly match `DISCORD_REDIRECT_URI=https://iancodes0.github.io/aa-flight-ops/`. GitHub Pages cannot call `127.0.0.1`, so the local default is intended only for testing on the same machine as the bot.
 
 The UI is American Airlines-inspired but uses its own abstract wing graphic and is not affiliated with or endorsed by American Airlines.
+
+## CesiumJS 3D globe
+
+The standalone globe is available at `website/globe.html`. It loads CesiumJS from
+the Cesium CDN and uses a Cesium Ion token for World Terrain and imagery.
+
+1. Copy `website/globe-config.example.js` to `website/globe-config.js`.
+2. Set `window.CESIUM_ION_ACCESS_TOKEN` in `website/globe-config.js` to a token
+   created at [Cesium Ion](https://ion.cesium.com/).
+3. Open `website/globe.html` through a local web server, not directly with
+   `file://`. For example:
+
+   ```sh
+   npx serve website
+   ```
+
+The token must be present in the browser, so it is not a server secret. In the
+Cesium Ion dashboard, restrict it to the domains where the globe is deployed
+and limit its allowed assets. The real `website/globe-config.js` is ignored by
+Git and must never be committed.
+
+### Aircraft physics
+
+`website/aircraft-physics.js` provides the browser-global `AircraftPhysics`
+class. It uses meters, seconds, and radians. Coordinates are `{ x, y, z }`,
+with `z` upward; `heading` is measured from the x-axis. Thrust is a value from
+0 to 1:
+
+```js
+const aircraft = new AircraftPhysics({
+  position: { x: 0, y: 0, z: 1_000 },
+  heading: 0
+});
+
+const state = aircraft.update(1 / 60, {
+  pitch: 0.05,
+  roll: 0,
+  thrust: 0.7
+});
+console.log(state.position, state.velocity);
+```
+
+The class applies thrust, quadratic drag, and gravity, and is loaded by
+`website/globe.html` before `globe.js`.
+
+The globe demo creates an aircraft entity using Cesium's sample `.glb` model
+and updates its Cesium position and orientation from the physics state on every
+clock tick. You can change the live inputs in the browser console:
+
+```js
+aircraftInputs.pitch = 0.1;
+aircraftInputs.roll = 0.05;
+aircraftInputs.thrust = 0.8;
+```
+
+Replace the `uri` in `website/globe.js` with a path such as
+`models/airplane.glb` when you add your own model. The model should point
+forward along its local +X axis for the default orientation mapping.
+
+Keep Discord bot tokens, OAuth client secrets, and other private API keys in
+the root `.env` file. Those values must never be placed in `website/` or in
+browser JavaScript.
