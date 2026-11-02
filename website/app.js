@@ -9,6 +9,10 @@ async function apiFetch(path, options = {}) {
   const sessionToken = localStorage.getItem('aa-flight-ops-session');
   if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error('The flight-plan service is not configured for this website. Please contact the administrator.');
+  }
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'The dashboard request failed.');
   return result;

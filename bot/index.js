@@ -28,6 +28,7 @@ const oauthRedirectUri = process.env.DISCORD_REDIRECT_URI || 'https://iancodes0.
 const flightPlanChannelId = '1554192355387646034';
 const roleClaimGuildId = '1554169019098079314';
 const websiteApiPort = Number(process.env.WEBSITE_API_PORT || 3001);
+const websiteApiHost = process.env.WEBSITE_API_HOST || '127.0.0.1';
 const websiteApiOrigin = process.env.WEBSITE_API_ORIGIN || '*';
 const dataDirectory = path.join(__dirname, 'data');
 const dataFile = path.join(dataDirectory, 'flight-data.json');
@@ -252,7 +253,7 @@ const flightPlanServer = http.createServer((request, response) => {
   jsonResponse(response, 404, { error: 'Not found' });
 });
 
-flightPlanServer.listen(websiteApiPort, '127.0.0.1', () => console.log(`Website flight-plan API listening on port ${websiteApiPort}.`));
+flightPlanServer.listen(websiteApiPort, websiteApiHost, () => console.log(`Website flight-plan API listening on ${websiteApiHost}:${websiteApiPort}.`));
 
 client.once('ready', async readyClient => {
   console.log(`Online as ${readyClient.user.tag}`);

@@ -45,7 +45,9 @@ When running locally, open `http://localhost:3001/`. The bot serves the dashboar
 <script src="app.js"></script>
 ```
 
-The API host must set `WEBSITE_API_ORIGIN=https://iancodes0.github.io`, and the Discord application OAuth redirect URI must exactly match `DISCORD_REDIRECT_URI=https://iancodes0.github.io/aa-flight-ops/`. GitHub Pages cannot call `127.0.0.1`, so the local default is intended only for testing on the same machine as the bot.
+The API host must set `WEBSITE_API_ORIGIN=https://iancodes0.github.io`, and the Discord application OAuth redirect URI must exactly match `DISCORD_REDIRECT_URI=https://iancodes0.github.io/aa-flight-ops/`. GitHub Pages cannot call `127.0.0.1`, so the local default is intended only for testing on the same machine as the bot. The published site also needs `window.AA_API_BASE` set to the public HTTPS address of the running bot API; GitHub Pages cannot serve the Node API itself.
+
+Render deployment is configured in `render.yaml`. Create a Render Blueprint from this repository, enter the two secret Discord values, and deploy the `aa-flight-ops-api` service. Its public URL is `https://aa-flight-ops-api.onrender.com`.
 
 The UI is American Airlines-inspired but uses its own abstract wing graphic and is not affiliated with or endorsed by American Airlines.
 

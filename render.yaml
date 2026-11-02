@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: aa-flight-ops-api
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        value: "1561441849129041991"
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        value: https://iancodes0.github.io/aa-flight-ops/
+      - key: WEBSITE_API_HOST
+        value: 0.0.0.0
+      - key: WEBSITE_API_PORT
+        value: "10000"
+      - key: WEBSITE_API_ORIGIN
+        value: https://iancodes0.github.io
