@@ -34,7 +34,7 @@ Run the command printed by `pm2 startup` on that host to enable boot-time startu
 
 ## Live pilot dashboard
 
-The website supports Discord OAuth sign-in, personal flight-plan status, moderator accept/deny actions, completed-flight history, hours, and nautical-mile totals. Requests are stored in `bot/data/flight-data.json`; back up that file in production.
+The website accepts flight-plan requests without Discord sign-in. Optional Discord OAuth provides personal flight-plan status, moderator accept/deny actions, completed-flight history, hours, and nautical-mile totals. Requests are stored in `bot/data/flight-data.json`; back up that file in production.
 
 There is no separate API project. The existing Node bot process includes the small backend needed for Discord login and flight-plan storage. GitHub Pages is only the frontend, so that same bot process must be reachable at a public HTTPS URL for the published site to use it. Set `window.AA_API_BASE` before `app.js` in `website/index.html` to that URL, for example:
 

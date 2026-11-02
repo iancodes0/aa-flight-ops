@@ -3,8 +3,6 @@ const pageTitle = document.querySelector('#page-title');
 const validPages = new Set(Object.keys(pageNames));
 const API_BASE = window.AA_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : '');
 let currentUser = null;
-const discordLogin = document.querySelector('#discord-login');
-if (discordLogin && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) discordLogin.href = '/api/auth/login';
 
 async function apiFetch(path, options = {}) {
   const headers = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) };
@@ -19,11 +17,6 @@ async function apiFetch(path, options = {}) {
 function updateNavigation() {
   const requestedPage = window.location.hash.slice(1);
   const page = validPages.has(requestedPage) ? requestedPage : 'welcome';
-  const isSignedIn = Boolean(localStorage.getItem('aa-flight-ops-session'));
-  if (page === 'request' && !isSignedIn) {
-    history.replaceState(null, '', `${window.location.pathname}${window.location.search}#welcome`);
-    return updateNavigation();
-  }
   if (requestedPage !== page) history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${page}`);
   document.querySelector('.main-content').classList.toggle('show-welcome', page === 'welcome');
   document.querySelectorAll('.navigation .nav-link').forEach(link => {
@@ -84,10 +77,8 @@ function renderDashboard(data) {
   document.querySelector('#stat-hours').textContent = Math.floor(data.stats.hours);
   document.querySelector('#stat-miles').textContent = Math.round(data.stats.miles).toLocaleString();
   renderPlans(data.plans);
-  const login = document.querySelector('#discord-login');
-  if (login) { login.textContent = 'Discord connected'; login.href = '#home'; }
   const description = document.querySelector('#request-description');
-  if (description) description.textContent = 'Send your route to the operations channel and get a route-based time estimate. Moderators will review your request.';
+  if (description) description.textContent = 'Send your route to the operations channel with no sign-in required. Moderators will review your request.';
   const submitButton = document.querySelector('#flight-plan-submit');
   if (submitButton) { submitButton.disabled = false; submitButton.innerHTML = 'Send flight plan <span>→</span>'; }
 }
@@ -98,7 +89,9 @@ async function loadDashboard() {
     renderDashboard(data);
   } catch (error) {
     const status = document.querySelector('#account-state');
-    if (status) status.innerHTML = '<i></i> Sign in required';
+    if (status) status.innerHTML = '<i></i> Guest access';
+    const accountName = document.querySelector('#account-name');
+    if (accountName) accountName.textContent = 'No sign-in required to request a flight plan';
     document.body.classList.remove('signed-in');
     if (error.message !== 'Sign in with Discord to continue.') console.warn(error.message);
   }
@@ -107,8 +100,6 @@ async function loadDashboard() {
 async function exchangeOAuthCode() {
   const code = new URLSearchParams(window.location.search).get('code');
   if (!code) return;
-  const login = document.querySelector('#discord-login');
-  if (login) login.textContent = 'Connecting Discord...';
   try {
     const result = await apiFetch('/api/auth/exchange', { method: 'POST', body: JSON.stringify({ code, redirectUri: window.location.origin + window.location.pathname }) });
     localStorage.setItem('aa-flight-ops-session', result.token);
@@ -116,7 +107,6 @@ async function exchangeOAuthCode() {
     await loadDashboard();
     updateNavigation();
   } catch (error) {
-    if (login) login.textContent = 'Discord sign-in failed';
     console.error(error.message);
   }
 }
@@ -144,10 +134,6 @@ arrivalInput?.addEventListener('input', updateRoutePreview);
 
 flightPlanForm?.addEventListener('submit', async event => {
   event.preventDefault();
-  if (!currentUser || !localStorage.getItem('aa-flight-ops-session')) {
-    window.location.href = '/api/auth/login';
-    return;
-  }
   statusMessage.className = 'form-status';
   statusMessage.textContent = 'Sending to operations...';
   const formData = new FormData(flightPlanForm);

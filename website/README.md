@@ -1,6 +1,6 @@
 # AA Flight Ops dashboard
 
-Pilot dashboard frontend for GitHub Pages. It uses Discord OAuth and a separate public Node API for authenticated flight-plan requests, moderation status, and pilot statistics.
+Pilot dashboard frontend for GitHub Pages. Flight-plan requests are public and do not require Discord; optional Discord OAuth provides personal request history, moderation status, and pilot statistics.
 
 ## Publish with GitHub Pages
 

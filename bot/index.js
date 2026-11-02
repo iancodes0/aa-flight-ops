@@ -219,19 +219,19 @@ const flightPlanServer = http.createServer((request, response) => {
   }
   if (request.url === '/api/flight-plan' && request.method === 'POST') {
     const session = getSession(request);
-    if (!session) return jsonResponse(response, 401, { error: 'Sign in with Discord to request a flight plan.' });
     readJson(request).then(async body => {
+      const pilot = String(body.pilot || '').trim();
       const callsign = String(body.callsign || '').trim().toUpperCase();
       const aircraft = String(body.aircraft || '').trim();
       const departure = String(body.departure || '').trim().toUpperCase();
       const arrival = String(body.arrival || '').trim().toUpperCase();
-      if (!callsign || !aircraft || !/^[A-Z]{4}$/.test(departure) || !/^[A-Z]{4}$/.test(arrival) || departure === arrival) throw new Error('Enter a callsign, aircraft, and two different four-letter ICAO airports.');
+      if (!pilot || pilot.length > 80 || !callsign || !aircraft || !/^[A-Z]{4}$/.test(departure) || !/^[A-Z]{4}$/.test(arrival) || departure === arrival) throw new Error('Enter a pilot name, callsign, aircraft, and two different four-letter ICAO airports.');
       const estimate = estimateFlight(departure, arrival, aircraft);
-      const plan = { id: crypto.randomUUID(), userId: session.user.id, pilot: session.user.global_name || session.user.username, callsign, aircraft, departure, arrival, estimatedMinutes: estimate.minutes, distance: estimate.distance, status: 'pending', reason: '', createdAt: new Date().toISOString() };
+      const plan = { id: crypto.randomUUID(), userId: session?.user.id || null, pilot, callsign, aircraft, departure, arrival, estimatedMinutes: estimate.minutes, distance: estimate.distance, status: 'pending', reason: '', createdAt: new Date().toISOString() };
       const channel = await client.channels.fetch(flightPlanChannelId);
       if (!channel?.isTextBased()) throw new Error('Configured flight-plan channel is unavailable.');
       const embed = new EmbedBuilder().setColor(0xC8170A).setTitle('New flight plan request').setDescription(`**${departure}**  →  **${arrival}**`).addFields(
-        { name: 'Callsign', value: callsign, inline: true }, { name: 'Pilot', value: `${plan.pilot} (<@${plan.userId}>)`, inline: true }, { name: 'Aircraft', value: aircraft, inline: true },
+        { name: 'Callsign', value: callsign, inline: true }, { name: 'Pilot', value: plan.userId ? `${plan.pilot} (<@${plan.userId}>)` : plan.pilot, inline: true }, { name: 'Aircraft', value: aircraft, inline: true },
         { name: 'Estimated flight time', value: formatDuration(estimate.minutes), inline: true }, { name: 'Route distance', value: estimate.distance ? `${estimate.distance.toLocaleString()} NM` : 'Standard estimate used', inline: true }, { name: 'Request ID', value: plan.id, inline: false }
       ).setFooter({ text: 'Submitted from AA Flight Ops website | Pending moderator review' }).setTimestamp();
       const controls = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`plan_accept:${plan.id}`).setLabel('Accept').setStyle(ButtonStyle.Success), new ButtonBuilder().setCustomId(`plan_deny:${plan.id}`).setLabel('Deny with reason').setStyle(ButtonStyle.Danger));
